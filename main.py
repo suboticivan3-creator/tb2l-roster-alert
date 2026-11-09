@@ -216,12 +216,12 @@ def show_league(chat_id, short_name, today_only=False):
             return
 
         lines = [
-            league_name + " â ZVANIČNI TBF",
+            league_name + " - ZVANIČNI TBF",
             "Raspored za danas" if today_only else "Raspored za narednih 30 dana",
             "",
         ]
         for match in matches[:40]:
-            lines.append(match["home"] + " â " + match["away"])
+            lines.append(match["home"] + " - " + match["away"])
             lines.append(
                 "Datum: " + match["date"]
                 + " | Vreme: " + (match["time"] or "Nije objavljeno")
