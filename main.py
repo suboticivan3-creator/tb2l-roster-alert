@@ -16,7 +16,7 @@ SEASON = 2027
 LEAGUES = {
     "tbl": {
         "name": "TBL",
-        "competition": "bsl",
+        "competition": "tbl",
         "activity_id": 22215
     },
     "tb2l": {
@@ -26,7 +26,7 @@ LEAGUES = {
     },
     "tkbl": {
         "name": "TKBL",
-        "competition": "tkbl",
+        "competition": "kbsl",
         "activity_id": 22210
     }
 }
@@ -59,9 +59,8 @@ def send_message(chat_id, message):
 
 def normalize(value):
     return "".join(
-        character.lower()
-        for character in str(value)
-        if character.isalnum()
+        c.lower() for c in str(value)
+        if c.isalnum()
     )
 
 
@@ -69,13 +68,13 @@ def get_field(obj, *names):
     if not isinstance(obj, dict):
         return None
 
-    normalized = {
-        normalize(key): value
-        for key, value in obj.items()
+    fields = {
+        normalize(k): v
+        for k, v in obj.items()
     }
 
     for name in names:
-        value = normalized.get(normalize(name))
+        value = fields.get(normalize(name))
 
         if value is not None and value != "":
             return value
@@ -84,27 +83,15 @@ def get_field(obj, *names):
 
 
 def find_records(obj):
-    if isinstance(obj, dict):
+    if isinstance(obj, list):
+        for item in obj:
+            yield from find_records(item)
+
+    elif isinstance(obj, dict):
         yield obj
 
         for value in obj.values():
             yield from find_records(value)
-
-    elif isinstance(obj, list):
-        for item in obj:
-            yield from find_records(item)
-
-
-def check_response(result):
-    if not isinstance(result, dict):
-        raise Exception("TBF je vratio neispravan odgovor.")
-
-    if result.get("isSuccess") is False:
-        raise Exception(
-            str(result.get("message", "TBF API greška"))
-        )
-
-    return result.get("data", [])
 
 
 def get_matches(short_name):
@@ -122,11 +109,21 @@ def get_matches(short_name):
     )
 
     result = get_json(url)
-    data = check_response(result)
 
+    if not isinstance(result, dict):
+        raise Exception("Neispravan odgovor TBF API-ja.")
+
+    if result.get("isSuccess") is False:
+        raise Exception(
+            result.get("message", "TBF API greška")
+        )
+
+    data = result.get("data") or []
     matches = []
+    seen = set()
 
     for item in find_records(data):
+
         match_id = get_field(
             item,
             "matchId",
@@ -139,13 +136,28 @@ def get_matches(short_name):
             "activity_id"
         )
 
-        if match_id is None or activity_id is None:
+        activity_name = get_field(
+            item,
+            "activityName",
+            "activity_name"
+        )
+
+        if match_id is None:
             continue
 
-        try:
-            if int(float(activity_id)) != league["activity_id"]:
+        # Filtriranje po tačnom ID-ju lige.
+        if activity_id is not None:
+            try:
+                if int(float(activity_id)) != league["activity_id"]:
+                    continue
+            except (TypeError, ValueError):
                 continue
-        except (TypeError, ValueError):
+
+        elif activity_name:
+            if normalize(league["name"]) not in normalize(activity_name):
+                continue
+
+        else:
             continue
 
         home = get_field(
@@ -167,12 +179,18 @@ def get_matches(short_name):
         if not home or not away:
             continue
 
+        if str(match_id) in seen:
+            continue
+
+        seen.add(str(match_id))
+
         match_date = get_field(
             item,
+            "tipoff",
             "matchDate",
             "match_date",
-            "tipoff",
-            "matchTime"
+            "matchTime",
+            "match_time"
         )
 
         home_score = get_field(
@@ -187,15 +205,23 @@ def get_matches(short_name):
             "away_score"
         )
 
+        status = get_field(
+            item,
+            "statusId",
+            "status_id"
+        )
+
         matches.append({
+            "id": str(match_id),
             "home": str(home),
             "away": str(away),
-            "date": str(
-                match_date or "Termin nije objavljen"
-            ),
+            "date": str(match_date or "Termin nije objavljen"),
             "home_score": home_score,
-            "away_score": away_score
+            "away_score": away_score,
+            "status": status
         })
+
+    matches.sort(key=lambda x: x["date"])
 
     return matches
 
@@ -210,7 +236,7 @@ def show_league(chat_id, short_name, today_only=False):
             send_message(
                 chat_id,
                 league_name
-                + "\nTBF nije vratio utakmice za ovu ligu."
+                + "\nTBF API nije vratio utakmice za ovu ligu."
             )
             return
 
@@ -220,20 +246,14 @@ def show_league(chat_id, short_name, today_only=False):
 
         if today_only:
             matches = [
-                match for match in matches
-                if match["date"][:10] == today
+                m for m in matches
+                if m["date"][:10] == today
             ]
-        else:
-            matches.sort(
-                key=lambda match: match["date"]
-            )
 
         if not matches:
             send_message(
                 chat_id,
                 league_name + "\nNema utakmica za danas."
-                if today_only
-                else league_name + "\nNema utakmica u rasporedu."
             )
             return
 
@@ -242,7 +262,7 @@ def show_league(chat_id, short_name, today_only=False):
             ""
         ]
 
-        for match in matches[:20]:
+        for match in matches[:30]:
             lines.append(
                 match["home"] + " — " + match["away"]
             )
@@ -251,23 +271,20 @@ def show_league(chat_id, short_name, today_only=False):
                 "Termin: " + match["date"]
             )
 
-            home_score = match["home_score"]
-            away_score = match["away_score"]
-
-            if home_score is not None and away_score is not None:
+            if (
+                match["home_score"] is not None
+                and match["away_score"] is not None
+            ):
                 lines.append(
                     "Rezultat: "
-                    + str(home_score)
-                    + ":"
-                    + str(away_score)
+                    + str(match["home_score"])
+                    + " : "
+                    + str(match["away_score"])
                 )
 
             lines.append("")
 
-        send_message(
-            chat_id,
-            "\n".join(lines)
-        )
+        send_message(chat_id, "\n".join(lines))
 
     except Exception as error:
         print("TBF ERROR:", repr(error))
@@ -277,7 +294,7 @@ def show_league(chat_id, short_name, today_only=False):
                 chat_id,
                 league_name
                 + " GREŠKA:\n"
-                + str(error)[:2500]
+                + str(error)[:2000]
             )
         except Exception as telegram_error:
             print("TELEGRAM ERROR:", repr(telegram_error))
