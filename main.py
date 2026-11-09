@@ -249,14 +249,11 @@ def show_league(chat_id, short_name, today_only=False):
         send_message(chat_id, "\n".join(lines))
 
     except Exception as error:
-        print("TBF ERROR:", repr(error))
-
-        send_message(
-            chat_id,
-            league_name
-            + "\nGreška pri čitanju TBF podataka."
-            + "\nProverićemo tačan odgovor API-ja."
-        )
+    print("TBF ERROR:", repr(error))
+    send_message(
+        chat_id,
+        league_name + " GREŠKA:\n" + str(error)[:3000]
+    )
 
 def handle_update(update):
     message = update.get("message", {})
