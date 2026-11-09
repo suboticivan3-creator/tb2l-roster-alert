@@ -247,10 +247,13 @@ def show_league(chat_id, short_name, today_only=False):
             print("TELEGRAM ERROR:", repr(telegram_error))
 
 
+subscribers = set()
+
 def handle_update(update):
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     command = message.get("text", "").strip().lower().split("@")[0]
+
     if not chat_id:
         return
 
@@ -262,12 +265,25 @@ def handle_update(update):
             "/tb2l - TB2L\n"
             "/tkbl - Ženska TKBL\n"
             "/today - Današnje utakmice svih liga\n"
-            "/id - Tvoj Chat ID",
+            "/subscribe - Prijava za obaveštenja\n"
+            "/unsubscribe - Odjava obaveštenja\n"
+            "/id - Tvoj Chat ID"
         )
+
+    elif command == "/subscribe":
+        subscribers.add(chat_id)
+        send_message(chat_id, "Uspešno si prijavljen za obaveštenja!")
+
+    elif command == "/unsubscribe":
+        subscribers.discard(chat_id)
+        send_message(chat_id, "Odjavljen si sa obaveštenja.")
+
     elif command == "/id":
         send_message(chat_id, "Tvoj Chat ID je: " + str(chat_id))
+
     elif command in ("/tbl", "/tb2l", "/tkbl"):
         show_league(chat_id, command[1:])
+
     elif command == "/today":
         for league in ("tbl", "tb2l", "tkbl"):
             show_league(chat_id, league, today_only=True)
