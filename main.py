@@ -1,4 +1,3 @@
-
 import os
 import json
 import time
@@ -27,7 +26,7 @@ LEAGUES = {
     },
     "tkbl": {
         "name": "TKBL",
-        "competition": "kbsl",
+        "competition": "tkbl",
         "activity_id": 22210
     }
 }
