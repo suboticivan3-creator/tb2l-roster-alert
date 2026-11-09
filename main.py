@@ -35,7 +35,7 @@ def api_data(result):
     if not isinstance(result, dict):
         raise Exception("TBF API je vratio neispravan odgovor.")
     if result.get("isSuccess") is False:
-        raise Exception(str(result.get("message") or "TBF API greÅ¡ka"))
+        raise Exception(str(result.get("message") or "TBF API greška"))
     return result.get("data") or []
 
 
@@ -211,12 +211,12 @@ def show_league(chat_id, short_name, today_only=False):
         if not matches:
             send_message(
                 chat_id,
-                league_name + "\nNema pronaÄenih utakmica za traÅ¾eni period.",
+                league_name + "\nNema pronadjenih utakmica za traženi period.",
             )
             return
 
         lines = [
-            league_name + " â ZVANIÄNI TBF",
+            league_name + " â ZVANIČNI TBF",
             "Raspored za danas" if today_only else "Raspored za narednih 30 dana",
             "",
         ]
@@ -242,7 +242,7 @@ def show_league(chat_id, short_name, today_only=False):
     except Exception as error:
         print("TBF ERROR:", repr(error))
         try:
-            send_message(chat_id, league_name + " GREÅ KA:\n" + str(error)[:2000])
+            send_message(chat_id, league_name + " GREŠKA:\n" + str(error)[:2000])
         except Exception as telegram_error:
             print("TELEGRAM ERROR:", repr(telegram_error))
 
@@ -260,8 +260,8 @@ def handle_update(update):
             "TBF BASKETBALL BOT\n\n"
             "/tbl - TBL\n"
             "/tb2l - TB2L\n"
-            "/tkbl - Å½enska TKBL\n"
-            "/today - DanaÅ¡nje utakmice svih liga\n"
+            "/tkbl - Ženska TKBL\n"
+            "/today - Današnje utakmice svih liga\n"
             "/id - Tvoj Chat ID",
         )
     elif command == "/id":
