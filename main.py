@@ -40,11 +40,7 @@ def api_data(result):
 
 
 def get_league_activity_ids():
-    """Read current-season activity IDs from TBF instead of hard-coding them."""
-    params = urllib.parse.urlencode({"season": SEASON})
-    url = TBF_URL + "League/get-leagues-for-filter?" + params
-    rows = api_data(get_json(url))
-    found = {}
+    return {"TBL": 22215, "TB2L": 22223, "TKBL": 22210}
 
     def walk(value):
         if isinstance(value, dict):
